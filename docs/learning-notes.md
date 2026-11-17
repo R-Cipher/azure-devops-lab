@@ -67,6 +67,10 @@ The intended path is: track work in Boards → change code on a branch → run t
 
 In `git commit -m "..."`, `-m` supplies a commit-message paragraph. Repeating `-m` adds another paragraph. In this lab, the first paragraph is the summary, `AB#2 AB#3` references the Azure Boards work items, and `Co-authored-by: ...` is a Git commit trailer. A commit is local; `git push` uploads it to the Azure DevOps remote.
 
+Normally, `git commit` never uploads by itself. A tool can combine both actions with a **Commit & Push** or **Sync** button, or an explicitly configured Git hook can push after a commit. Editing a file in the Azure DevOps web interface is different: the commit is created directly in the remote repository by the web service. Check the wording of an IDE button to see whether it commits, pushes, or does both.
+
+For day-to-day work, make commits at sensible checkpoints and push your feature branch regularly. At the end of a work session, a local commit saves a named checkpoint on that computer; pushing also stores it in the remote repository for backup and collaboration. Uncommitted edits normally remain on disk when you close the editor, but they aren't in Git history or backed up remotely. Work can be incomplete when committed; use a clear message (for example, `WIP: ...`) and keep it on your feature branch until it is ready for review.
+
 ## Automated tests
 
 The API project is the application. The test project is a separate program that checks the application automatically. A project reference lets the test project use the API code. `Microsoft.AspNetCore.Mvc.Testing` can start the API in memory, so a test can send an HTTP request to `/health` without deploying the app to Azure.
