@@ -16,4 +16,4 @@ Build it with the .NET 10 SDK:
 dotnet build .\src\ServiceStatus.Api\ServiceStatus.Api.csproj
 ```
 
-Automated tests, the Azure Pipeline, and Terraform infrastructure are planned lab steps.
+Automated tests are in `tests/ServiceStatus.Api.Tests`; the pipeline recipe is in `azure-pipelines.yml`. The pipeline still needs to be configured and run in Azure DevOps. Terraform infrastructure is a later lab step.

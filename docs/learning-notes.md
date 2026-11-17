@@ -79,6 +79,12 @@ dotnet test .\tests\ServiceStatus.Api.Tests\ServiceStatus.Api.Tests.csproj
 
 The current test checks that `/health` returns HTTP 200 and a JSON `status` of `Healthy`.
 
+## Azure Pipelines and continuous integration
+
+The root `azure-pipelines.yml` file is a recipe for Azure Pipelines. When configured, Azure DevOps starts a build agent, checks out the repository, selects the .NET 10 SDK, and runs the test project. The agent reports success or failure; this pipeline does not deploy the API or create Azure resources.
+
+**Continuous integration (CI)** means automatically building and testing code when changes are pushed. This pipeline is configured for pushes to `main` and `feature/*` branches. For an Azure Repos Git pull request, PR validation is enabled separately through a **Build validation** branch policy on the target branch; it isn't configured with a YAML `pr:` trigger.
+
 ## What is an API?
 
 An API is a defined way for one program to request something from another. A web API uses HTTP requests and responses. It can be a complete, small server-side application even when it has no web page, user interface, or database.
@@ -147,8 +153,10 @@ flowchart TD
 - Local Git branch: `feature/2-service-status-api`
 - API: .NET 10 ASP.NET Core project in `src/ServiceStatus.Api`, with a `/health` endpoint returning HTTP 200 and `{"status":"Healthy"}`
 - Tests: xUnit project in `tests/ServiceStatus.Api.Tests`
+- Pipeline recipe: `azure-pipelines.yml` runs tests on `main` and `feature/*`; it hasn't been configured/run in Azure Pipelines yet, and `main` still needs a PR build-validation policy
 - MCP: local Azure DevOps MCP server configured in root `.mcp.json`, using Azure CLI authentication
-- Local commit: `6c55ef6` (`Create and test Service Status API`); the branch hasn't been pushed yet
-- Not done yet: pull request, Azure Pipeline, Terraform infrastructure, or Azure deployment
+- Commits: `6c55ef6` (`Create and test Service Status API`) and `4ea4917` (`Update lab learning notes`) are pushed on `feature/2-service-status-api`
+- Pull request: #1 is open; it hasn't been merged
+- Not done yet: configure/run Azure Pipelines, add PR validation policy, Terraform infrastructure, or Azure deployment
 
 Check `git status` before making more changes or switching branches.
