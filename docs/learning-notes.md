@@ -157,10 +157,11 @@ flowchart TD
 - Local Git branch: `feature/2-service-status-api`
 - API: .NET 10 ASP.NET Core project in `src/ServiceStatus.Api`, with a `/health` endpoint returning HTTP 200 and `{"status":"Healthy"}`
 - Tests: xUnit project in `tests/ServiceStatus.Api.Tests`
-- Pipeline recipe: `azure-pipelines.yml` runs tests on `main` and `feature/*`; it hasn't been configured/run in Azure Pipelines yet, and `main` still needs a PR build-validation policy
+- Pipeline: `azure-pipelines.yml` runs tests on `main` and `feature/*`; configured in Azure Pipelines and passed a run
+- Branch policy: `main` requires an automatic passing build for PR validation; PR #1's validation passed
 - MCP: local Azure DevOps MCP server configured in root `.mcp.json`, using Azure CLI authentication
-- Commits: `6c55ef6` (`Create and test Service Status API`) and `4ea4917` (`Update lab learning notes`) are pushed on `feature/2-service-status-api`
+- Commits: the API, tests, pipeline, and learning notes are pushed on `feature/2-service-status-api`
 - Pull request: #1 is open; it hasn't been merged
-- Not done yet: configure/run Azure Pipelines, add PR validation policy, Terraform infrastructure, or Azure deployment
+- Not done yet: Terraform infrastructure or Azure deployment
 
 Check `git status` before making more changes or switching branches.
