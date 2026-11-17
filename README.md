@@ -16,4 +16,4 @@ Build it with the .NET 10 SDK:
 dotnet build .\src\ServiceStatus.Api\ServiceStatus.Api.csproj
 ```
 
-Automated tests are in `tests/ServiceStatus.Api.Tests`; the pipeline recipe is in `azure-pipelines.yml`. The pipeline is configured and has passed a run. Terraform infrastructure is a later lab step.
+Automated tests are in `tests/ServiceStatus.Api.Tests`; the pipeline recipe is in `azure-pipelines.yml`. It runs the API tests and validates the Terraform configuration, but does not deploy resources. Terraform configuration for an Azure Linux App Service is in `infra/terraform`.

@@ -85,7 +85,7 @@ The current test checks that `/health` returns HTTP 200 and a JSON `status` of `
 
 ## Azure Pipelines and continuous integration
 
-The root `azure-pipelines.yml` file is a recipe for Azure Pipelines. When configured, Azure DevOps starts a build agent, checks out the repository, selects the .NET 10 SDK, and runs the test project. The agent reports success or failure; this pipeline does not deploy the API or create Azure resources.
+The root `azure-pipelines.yml` file is a recipe for Azure Pipelines. It selects the .NET 10 SDK, runs the API tests, and checks the Terraform configuration. The agent reports success or failure; this pipeline does not deploy the API or create Azure resources.
 
 **Continuous integration (CI)** means automatically building and testing code when changes are pushed. This pipeline is configured for pushes to `main` and `feature/*` branches. For an Azure Repos Git pull request, PR validation is enabled separately through a **Build validation** branch policy on the target branch; it isn't configured with a YAML `pr:` trigger.
 
@@ -126,6 +126,24 @@ Terraform reads infrastructure configuration written in HCL. `terraform init` do
 
 Both are installed developer toolchains, but they solve different problems: .NET builds the API software; Terraform describes and manages the infrastructure that can host it.
 
+### Terraform configuration in this lab
+
+The configuration in `infra/terraform` describes three Azure resources: a resource group, a Linux App Service plan, and a Linux Web App for the API. The Web App is configured to use .NET 10 and HTTPS. Its name must be globally unique in Azure.
+
+The initial plan uses the `F1` Free App Service tier to keep the lab cost-conscious. Free-tier availability and limits vary; it is for learning, not production. Review current Azure pricing and the plan before creating any resources. No resources have been deployed. The pipeline only runs Terraform formatting, initialization, and validation; it does not run `plan` or `apply`.
+
+`terraform init` downloads the AzureRM provider and creates `.terraform.lock.hcl`, which should be committed to keep provider selection consistent. The generated `.terraform` directory and local state are ignored by Git. Local `terraform.tfvars` files are also ignored; they hold input values such as subscription ID, region, and globally unique app name, not credentials. The configuration does not yet have a remote state backend, which should be added before team-based Terraform runs.
+
+From `infra/terraform`, these commands check the configuration without deploying:
+
+```powershell
+terraform init
+terraform fmt -check
+terraform validate
+```
+
+`terraform plan` is a later step that contacts Azure to preview changes. It requires Azure authentication and real input values. `terraform apply` creates or changes resources, so do not run it until the expected costs and plan have been reviewed and deployment is explicitly approved.
+
 The .NET `webapi` template created a runnable ASP.NET Core project. In this lab, `Program.cs` configures and starts the web server and defines one endpoint:
 
 ```csharp
@@ -157,15 +175,16 @@ flowchart TD
 
 - Azure DevOps project: `Azure-DevOps-Delivery-Lab`
 - Azure DevOps organization: `romy33`
-- Azure Boards items: Epic #1 → Issue #2 → Task #3
-- Current notes-update branch: `docs/record-main-ci-result` (based on `main`, synced after PR #1 was merged)
+- Azure Boards items: Epic #1 → Issue #2 → Task #3; Terraform Issue #5 is also linked to Epic #1
+- Terraform work branch for Issue #5: `feature/5-terraform-app-service`
 - API: .NET 10 ASP.NET Core project in `src/ServiceStatus.Api`, with a `/health` endpoint returning HTTP 200 and `{"status":"Healthy"}`
 - Tests: xUnit project in `tests/ServiceStatus.Api.Tests`
-- Pipeline: `azure-pipelines.yml` runs tests on `main` and `feature/*`; post-merge run #20261117.4 on `main` passed with 100% of tests passing
+- Pipeline: `main` runs .NET tests; post-merge run #20261117.4 passed with 100% of tests passing. The current branch adds Terraform formatting and validation checks, not deployment.
 - Branch policy: `main` requires an automatic passing build for PR validation; PR #1's validation passed
 - MCP: local Azure DevOps MCP server configured in root `.mcp.json`, using Azure CLI authentication
 - Commits: the API, tests, pipeline, and learning notes are pushed on `feature/2-service-status-api`
-- Pull request: #1 was merged; its post-merge pipeline run passed
-- Not done yet: Terraform infrastructure or Azure deployment
+- Pull requests: #1 (API and tests) and #2 (main-pipeline notes) were merged
+- Terraform: local formatting and validation passed; no Azure resources have been created
+- Not done yet: run Terraform plan with Azure authentication, configure remote state, or deploy the API
 
 Check `git status` before making more changes or switching branches.
