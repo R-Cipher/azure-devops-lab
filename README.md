@@ -10,7 +10,7 @@ A portfolio lab demonstrating an Azure DevOps workflow around a small ASP.NET Co
 - Developing on feature branches and merging through pull requests.
 - Running API integration tests automatically in Azure Pipelines.
 - Describing Azure App Service infrastructure with Terraform.
-- Validating Terraform in CI without automatically changing Azure resources.
+- Planning Terraform changes in CI and applying the reviewed plan only after a manual environment approval.
 
 ## Workflow
 
@@ -20,12 +20,14 @@ flowchart LR
     B --> C["Pull request"]
     C --> D["Azure Pipeline"]
     D --> E[".NET build and API tests"]
-    D --> F["Terraform format and validation"]
+    D --> F["Terraform format, validation, and plan"]
     E --> G["Review and merge to main"]
     F --> G
+    G --> H["Manual approval"]
+    H --> I["Terraform apply"]
 ```
 
-The pipeline checks the application and Terraform configuration. It does not run `terraform plan` or `terraform apply`, and it does not deploy the API.
+The pipeline checks the application and Terraform configuration on `main` and `feature/*`. On `main`, it creates and publishes a Terraform plan artifact. The `Apply` stage is restricted to `main` and uses the `terraform-apply` environment, where configured approvals must complete before the reviewed plan is applied. The pipeline does not deploy the API.
 
 ## Application
 
@@ -62,7 +64,7 @@ Terraform configuration is in `infra/terraform`. It uses a separately created re
 
 The resource group `rg-service-status-lab` must be created separately before planning; Terraform looks it up and uses its region. This lets the future pipeline apply identity be scoped to that group instead of the subscription. The F1 tier has significant limitations and availability can vary by region and subscription. Review current Azure pricing and the plan before provisioning resources. Remote Terraform state is configured in `infra/terraform/backend.tf` using a separate Azure Blob Storage account. Local Terraform uses Azure CLI/Microsoft Entra authentication; Azure Pipelines still uses `-backend=false` and does not have access to the backend or Azure deployment credentials.
 
-The current plan proposes two App Service resources to add, with no changes or deletions. A successful plan is not a quota or capacity guarantee and is not a cost estimate.
+The current plan proposes two App Service resources to add, with no changes or deletions. A successful plan is not a quota or capacity guarantee and is not a cost estimate. The pipeline's plan and apply stages require separate Azure DevOps service connections named `sc-terraform-plan` and `sc-terraform-apply`.
 
 ### Validate Terraform without deploying
 
@@ -86,7 +88,10 @@ The Azure CLI identity needs Blob data access to the private state container. Th
 The pipeline definition is `azure-pipelines.yml`. It runs on pushes to `main` and `feature/*` and:
 
 1. Selects the .NET 10 SDK and runs the API tests.
-2. Installs a pinned Terraform CLI, verifies its download checksum, and runs Terraform formatting, initialization, and validation.
+2. Installs a pinned Terraform CLI and verifies its download checksum.
+3. Runs Terraform formatting, initialization, and validation.
+4. On `main`, runs `terraform plan` with the remote backend and publishes the plan as the `terraform-plan` artifact.
+5. On `main`, waits for approval on the `terraform-apply` environment, then applies that reviewed plan with the apply service connection.
 
 For Azure Repos pull requests, build validation is configured separately as a branch policy on `main`.
 
@@ -104,6 +109,6 @@ See [Learning Notes](docs/learning-notes.md) for explanations of MCP, Azure Boar
 
 ## Planned next steps
 
-- Configure a secure Azure DevOps service connection with access to the remote state backend, then add a reviewed Terraform plan to the pipeline.
+- Configure and verify secure Azure DevOps service connections with access to the remote state backend, and configure the `terraform-apply` environment approval.
 - Review F1 availability and pricing before deciding whether to apply the plan.
 - Add a controlled application deployment and post-deployment health check only after deployment is approved.

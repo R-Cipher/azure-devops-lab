@@ -1,0 +1,17 @@
+steps:
+  - bash: |
+      set -euo pipefail
+
+      terraform_version="1.16.5"
+      archive="terraform_${terraform_version}_linux_amd64.zip"
+      download_dir="${AGENT_TEMPDIRECTORY}/terraform"
+      release_url="https://releases.hashicorp.com/terraform/${terraform_version}"
+
+      mkdir -p "$download_dir"
+      curl -fsSLo "$download_dir/$archive" "$release_url/$archive"
+      curl -fsSLo "$download_dir/SHA256SUMS" "$release_url/terraform_${terraform_version}_SHA256SUMS"
+      (cd "$download_dir" && grep " $archive$" SHA256SUMS | sha256sum --check)
+      unzip -q "$download_dir/$archive" -d "$download_dir"
+
+      "$download_dir/terraform" version
+    displayName: Install Terraform

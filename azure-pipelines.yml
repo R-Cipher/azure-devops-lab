@@ -10,56 +10,90 @@ pool:
 variables:
   terraformWebAppName: service-status-lab-romy01
 
-steps:
-  - task: UseDotNet@2
-    displayName: Use .NET 10 SDK
-    inputs:
-      packageType: sdk
-      version: 10.0.x
+stages:
+  - stage: ValidateAndPlan
+    displayName: Validate and plan
+    jobs:
+      - job: validate_and_plan
+        displayName: Validate and plan
+        steps:
+          - task: UseDotNet@2
+            displayName: Use .NET 10 SDK
+            inputs:
+              packageType: sdk
+              version: 10.0.x
 
-  - task: DotNetCoreCLI@2
-    displayName: Run API tests
-    inputs:
-      command: test
-      projects: tests/ServiceStatus.Api.Tests/ServiceStatus.Api.Tests.csproj
-      arguments: --configuration Release
-      publishTestResults: true
+          - task: DotNetCoreCLI@2
+            displayName: Run API tests
+            inputs:
+              command: test
+              projects: tests/ServiceStatus.Api.Tests/ServiceStatus.Api.Tests.csproj
+              arguments: --configuration Release
+              publishTestResults: true
 
-  - bash: |
-      set -euo pipefail
+          - template: pipelines/templates/install-terraform.yml
 
-      terraform_version="1.16.5"
-      archive="terraform_${terraform_version}_linux_amd64.zip"
-      download_dir="${AGENT_TEMPDIRECTORY}/terraform"
-      release_url="https://releases.hashicorp.com/terraform/${terraform_version}"
+          - bash: |
+              set -euo pipefail
 
-      mkdir -p "$download_dir"
-      curl -fsSLo "$download_dir/$archive" "$release_url/$archive"
-      curl -fsSLo "$download_dir/SHA256SUMS" "$release_url/terraform_${terraform_version}_SHA256SUMS"
-      (cd "$download_dir" && grep " $archive$" SHA256SUMS | sha256sum --check)
-      unzip -q "$download_dir/$archive" -d "$download_dir"
+              terraform_bin="${AGENT_TEMPDIRECTORY}/terraform/terraform"
 
-      "$download_dir/terraform" version
-      "$download_dir/terraform" fmt -check -recursive
-      "$download_dir/terraform" init -backend=false -input=false -lockfile=readonly
-      "$download_dir/terraform" validate
-    displayName: Validate Terraform configuration
-    workingDirectory: infra/terraform
-  - task: AzureCLI@2
-    displayName: Plan Terraform infrastructure
-    inputs:
-      azureSubscription: sc-terraform-plan
-      scriptType: bash
-      scriptLocation: inlineScript
-      workingDirectory: infra/terraform
+              "$terraform_bin" fmt -check -recursive
+              "$terraform_bin" init -backend=false -input=false -lockfile=readonly
+              "$terraform_bin" validate
+            displayName: Validate Terraform configuration
+            workingDirectory: infra/terraform
 
-      inlineScript: |
-        set -euo pipefail
+          - task: AzureCLI@2
+            displayName: Plan Terraform infrastructure
+            inputs:
+              azureSubscription: sc-terraform-plan
+              scriptType: bash
+              scriptLocation: inlineScript
+              workingDirectory: infra/terraform
+              inlineScript: |
+                set -euo pipefail
 
-        terraform_bin="${AGENT_TEMPDIRECTORY}/terraform/terraform"
-        subscription_id="$(az account show --query id --output tsv)"
+                terraform_bin="${AGENT_TEMPDIRECTORY}/terraform/terraform"
+                subscription_id="$(az account show --query id --output tsv)"
 
-        "$terraform_bin" init -reconfigure -input=false -lockfile=readonly
-        "$terraform_bin" plan -input=false -no-color \
-          -var="subscription_id=${subscription_id}" \
-          -var="web_app_name=${{ variables.terraformWebAppName }}"
+                "$terraform_bin" init -reconfigure -input=false -lockfile=readonly
+                "$terraform_bin" plan -input=false -no-color -out=tfplan \
+                  -var="subscription_id=${subscription_id}" \
+                  -var="web_app_name=${{ variables.terraformWebAppName }}"
+
+          - publish: infra/terraform/tfplan
+            artifact: terraform-plan
+            displayName: Publish reviewed Terraform plan
+            condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+
+  - stage: Apply
+    displayName: Apply Terraform after approval
+    dependsOn: ValidateAndPlan
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: terraform_apply
+        displayName: Apply approved Terraform plan
+        environment: terraform-apply
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - template: pipelines/templates/install-terraform.yml
+
+                - task: AzureCLI@2
+                  displayName: Apply approved Terraform plan
+                  inputs:
+                    azureSubscription: sc-terraform-apply
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    workingDirectory: infra/terraform
+                    inlineScript: |
+                      set -euo pipefail
+
+                      terraform_bin="${AGENT_TEMPDIRECTORY}/terraform/terraform"
+
+                      "$terraform_bin" init -reconfigure -input=false -lockfile=readonly
+                      "$terraform_bin" apply -input=false -no-color "${PIPELINE_WORKSPACE}/terraform-plan/tfplan"
