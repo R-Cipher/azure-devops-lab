@@ -358,5 +358,16 @@ MigrationBackup/
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
 
+# Terraform working files and local state
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+*_override.tf
+*_override.tf.json
+crash.log
+crash.*.log
+
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
