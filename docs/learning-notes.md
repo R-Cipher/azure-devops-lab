@@ -134,6 +134,8 @@ The initial plan uses the `F1` Free App Service tier to keep the lab cost-consci
 
 `terraform init` downloads the AzureRM provider and creates `.terraform.lock.hcl`, which should be committed to keep provider selection consistent. The generated `.terraform` directory and local state are ignored by Git. Local `terraform.tfvars` files are also ignored; they hold input values such as subscription ID, region, and globally unique app name, not credentials. The configuration does not yet have a remote state backend, which should be added before team-based Terraform runs.
 
+`versions.tf` requires Terraform `~> 1.16.5`, and the pipeline installs exactly 1.16.5. The CLI may print an informational notice when a newer version is available; that does not mean the configured version is invalid. The AzureRM constraint `~> 4.0` permits 4.x releases, while `.terraform.lock.hcl` selects the exact provider version and records checksums for the Linux and Windows platforms used by the lab.
+
 From `infra/terraform`, these commands check the configuration without deploying:
 
 ```powershell
