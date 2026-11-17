@@ -184,4 +184,5 @@ stages:
                         --name "$(terraformWebAppName)" \
                         --src-path "${PIPELINE_WORKSPACE}/app-package/service-status-api.zip" \
                         --type zip \
+                        --clean true \
                         --async false
