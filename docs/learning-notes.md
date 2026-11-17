@@ -89,6 +89,10 @@ The root `azure-pipelines.yml` file is a recipe for Azure Pipelines. When config
 
 **Continuous integration (CI)** means automatically building and testing code when changes are pushed. This pipeline is configured for pushes to `main` and `feature/*` branches. For an Azure Repos Git pull request, PR validation is enabled separately through a **Build validation** branch policy on the target branch; it isn't configured with a YAML `pr:` trigger.
 
+### Hosted-agent queueing
+
+A pipeline job needs an agent (a machine that checks out the code and runs the steps). This organization has one free Microsoft-hosted parallel job for private projects, with up to 1,800 minutes per month. That allows one hosted job to run at a time; the monthly minutes are usage, not the number of jobs. A run can remain queued while Azure Pipelines acquires an agent. In this lab, the first post-merge run waited about 20 minutes without starting; canceling and rerunning let the agent start, and the tests then passed. A queued job has not reached checkout or testing yet, so check agent availability and service status before troubleshooting application code.
+
 ## What is an API?
 
 An API is a defined way for one program to request something from another. A web API uses HTTP requests and responses. It can be a complete, small server-side application even when it has no web page, user interface, or database.
@@ -154,14 +158,14 @@ flowchart TD
 - Azure DevOps project: `Azure-DevOps-Delivery-Lab`
 - Azure DevOps organization: `romy33`
 - Azure Boards items: Epic #1 → Issue #2 → Task #3
-- Local Git branch: `feature/2-service-status-api`
+- Current notes-update branch: `docs/record-main-ci-result` (based on `main`, synced after PR #1 was merged)
 - API: .NET 10 ASP.NET Core project in `src/ServiceStatus.Api`, with a `/health` endpoint returning HTTP 200 and `{"status":"Healthy"}`
 - Tests: xUnit project in `tests/ServiceStatus.Api.Tests`
-- Pipeline: `azure-pipelines.yml` runs tests on `main` and `feature/*`; configured in Azure Pipelines and passed a run
+- Pipeline: `azure-pipelines.yml` runs tests on `main` and `feature/*`; post-merge run #20261117.4 on `main` passed with 100% of tests passing
 - Branch policy: `main` requires an automatic passing build for PR validation; PR #1's validation passed
 - MCP: local Azure DevOps MCP server configured in root `.mcp.json`, using Azure CLI authentication
 - Commits: the API, tests, pipeline, and learning notes are pushed on `feature/2-service-status-api`
-- Pull request: #1 is open; it hasn't been merged
+- Pull request: #1 was merged; its post-merge pipeline run passed
 - Not done yet: Terraform infrastructure or Azure deployment
 
 Check `git status` before making more changes or switching branches.
