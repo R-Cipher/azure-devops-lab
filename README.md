@@ -2,7 +2,7 @@
 
 A portfolio lab demonstrating an Azure DevOps workflow around a small ASP.NET Core Service Status API. It combines Azure Boards work tracking, Git branches and pull requests, automated tests, Azure Pipelines CI, and Terraform infrastructure as code.
 
-> **Current status:** API CI and Terraform validation are implemented. An authenticated Terraform plan previewed three Azure resources in East US; nothing has been provisioned or deployed.
+> **Current status:** API CI and Terraform validation are implemented. A fresh plan using remote state previewed two App Service resources in East US, with no changes or deletions. The state storage and app resource groups exist; the App Service resources have not been created or deployed.
 
 ## What this project demonstrates
 
@@ -55,31 +55,31 @@ Use the local URL printed by `dotnet run` and append `/health` to check the endp
 
 ## Infrastructure as code
 
-Terraform configuration is in `infra/terraform`. It describes:
+Terraform configuration is in `infra/terraform`. It uses a separately created resource group and manages:
 
-- An Azure resource group.
 - A Linux App Service plan using the Free (`F1`) tier.
 - A Linux Web App configured for .NET 10 and HTTPS, with Always On and publishing basic authentication disabled.
 
-The F1 tier has significant limitations and availability can vary by region and subscription. Review current Azure pricing and the plan before provisioning resources. The repository does not yet configure remote Terraform state or Azure deployment credentials.
+The resource group `rg-service-status-lab` must be created separately before planning; Terraform looks it up and uses its region. This lets the future pipeline apply identity be scoped to that group instead of the subscription. The F1 tier has significant limitations and availability can vary by region and subscription. Review current Azure pricing and the plan before provisioning resources. Remote Terraform state is configured in `infra/terraform/backend.tf` using a separate Azure Blob Storage account. Local Terraform uses Azure CLI/Microsoft Entra authentication; Azure Pipelines still uses `-backend=false` and does not have access to the backend or Azure deployment credentials.
 
-The current plan proposes three resources to add, with no changes or deletions. A successful plan is not a quota or capacity guarantee and is not a cost estimate.
+The current plan proposes two App Service resources to add, with no changes or deletions. A successful plan is not a quota or capacity guarantee and is not a cost estimate.
 
 ### Validate Terraform without deploying
 
 Prerequisite: Terraform CLI 1.16.5.
 
 ```powershell
+az login
 Push-Location .\infra\terraform
 terraform fmt -check -recursive
-terraform init -backend=false -input=false -lockfile=readonly
+terraform init -input=false -lockfile=readonly
 terraform validate
 Pop-Location
 ```
 
-The AzureRM provider version is selected in `.terraform.lock.hcl`. Local `terraform.tfvars` files and Terraform state are ignored by Git. Never commit credentials or secrets.
+The Azure CLI identity needs Blob data access to the private state container. The AzureRM provider version is selected in `.terraform.lock.hcl`. Local `terraform.tfvars` files and any local Terraform state are ignored by Git; the active state is stored in Azure Blob Storage. Never commit credentials, secrets, or state files.
 
-`terraform plan` previews changes against Azure and requires authentication and input values. `terraform apply` creates or changes resources; neither command runs in the current pipeline.
+`terraform plan` previews changes against Azure and requires authentication, a subscription ID, and a globally unique Web App name. The region comes from the existing resource group. `terraform apply` creates or changes the App Service resources; neither command runs in the current pipeline.
 
 ## Azure DevOps pipeline
 
@@ -104,6 +104,6 @@ See [Learning Notes](docs/learning-notes.md) for explanations of MCP, Azure Boar
 
 ## Planned next steps
 
-- Set up remote Terraform state before team-based plan or apply workflows.
+- Configure a secure Azure DevOps service connection with access to the remote state backend, then add a reviewed Terraform plan to the pipeline.
 - Review F1 availability and pricing before deciding whether to apply the plan.
 - Add a controlled application deployment and post-deployment health check only after deployment is approved.

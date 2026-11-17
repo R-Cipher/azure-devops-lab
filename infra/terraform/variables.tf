@@ -3,11 +3,6 @@ variable "subscription_id" {
   type        = string
 }
 
-variable "location" {
-  description = "Azure region for the lab resources."
-  type        = string
-}
-
 variable "web_app_name" {
   description = "Globally unique name for the Linux Web App; use lowercase letters, numbers, and hyphens."
   type        = string
