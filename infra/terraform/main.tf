@@ -9,16 +9,14 @@ locals {
   }
 }
 
-resource "azurerm_resource_group" "api" {
-  name     = "rg-${local.name_prefix}"
-  location = var.location
-  tags     = local.common_tags
+data "azurerm_resource_group" "api" {
+  name = "rg-${local.name_prefix}"
 }
 
 resource "azurerm_service_plan" "api" {
   name                = "asp-${local.name_prefix}"
-  location            = azurerm_resource_group.api.location
-  resource_group_name = azurerm_resource_group.api.name
+  location            = data.azurerm_resource_group.api.location
+  resource_group_name = data.azurerm_resource_group.api.name
   os_type             = "Linux"
   sku_name            = "F1"
   tags                = local.common_tags
@@ -26,8 +24,8 @@ resource "azurerm_service_plan" "api" {
 
 resource "azurerm_linux_web_app" "api" {
   name                                           = var.web_app_name
-  location                                       = azurerm_resource_group.api.location
-  resource_group_name                            = azurerm_resource_group.api.name
+  location                                       = data.azurerm_resource_group.api.location
+  resource_group_name                            = data.azurerm_resource_group.api.name
   service_plan_id                                = azurerm_service_plan.api.id
   https_only                                     = true
   ftp_publish_basic_authentication_enabled       = false

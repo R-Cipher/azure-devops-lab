@@ -128,21 +128,28 @@ Both are installed developer toolchains, but they solve different problems: .NET
 
 ### Terraform configuration in this lab
 
-The configuration in `infra/terraform` describes three Azure resources: a resource group, a Linux App Service plan, and a Linux Web App for the API. The Web App is configured to use .NET 10 and HTTPS. Its name must be globally unique in Azure.
+The configuration in `infra/terraform` looks up an existing resource group and manages two Azure resources: a Linux App Service plan and a Linux Web App for the API. The resource group `rg-service-status-lab` must be created separately before planning; Terraform uses its region and does not create or delete the group. The Web App is configured to use .NET 10 and HTTPS. Its name must be globally unique in Azure.
 
 The initial plan uses the `F1` Free App Service tier to keep the lab cost-conscious. Free-tier availability and limits vary; it is for learning, not production. Always On is disabled because F1 doesn't support it, and FTP/WebDeploy basic publishing authentication is disabled. Review current Azure pricing and the plan before creating any resources.
 
-An authenticated plan in East US proposed 3 resources to add, 0 to change, and 0 to destroy. This is a preview, not a cost estimate or a guarantee that Azure has capacity to create the resources. No resources have been deployed. The pipeline only runs Terraform formatting, initialization, and validation; it does not run `plan` or `apply`.
+The current plan, using remote state and the separately created resource group, proposes 2 App Service resources to add, 0 to change, and 0 to destroy. This is a preview, not a cost estimate or a guarantee that Azure has capacity to create the resources. The separate Azure Blob storage account for Terraform state and app resource group have been created, but no App Service resources have been deployed. The pipeline only runs Terraform formatting, initialization, and validation; it does not run `plan` or `apply`.
 
-`terraform init` downloads the AzureRM provider and creates `.terraform.lock.hcl`, which should be committed to keep provider selection consistent. The generated `.terraform` directory and local state are ignored by Git. Local `terraform.tfvars` files are also ignored; they hold input values such as subscription ID, region, and globally unique app name, not credentials. The configuration does not yet have a remote state backend, which should be added before team-based Terraform runs.
+`terraform init` downloads the AzureRM provider and creates `.terraform.lock.hcl`, which should be committed to keep provider selection consistent. The generated `.terraform` directory and any local state are ignored by Git. Local `terraform.tfvars` files are also ignored; they hold input values such as subscription ID and globally unique app name, not credentials. The app resources take their region from the separately created resource group.
+
+### Remote Terraform state
+
+Terraform state is Terraform's record of resources it manages. The `azurerm` backend in `infra/terraform/backend.tf` stores it in a private Azure Blob container. Azure Blob leases provide state locking so concurrent Terraform operations do not write state at the same time. The backend storage account is separate from the App Service resources and must be created before Terraform can initialize this backend.
+
+Local Terraform uses Microsoft Entra authentication through the signed-in Azure CLI identity, which needs Blob data access to the container. Never store account keys in Terraform configuration or commit state files; state can contain sensitive resource details. The Azure Pipelines job still uses `terraform init -backend=false` and does not access the remote backend. A secure Azure DevOps service connection and scoped Blob access must be configured before CI can use remote state.
 
 `versions.tf` requires Terraform `~> 1.16.5`, and the pipeline installs exactly 1.16.5. The CLI may print an informational notice when a newer version is available; that does not mean the configured version is invalid. The AzureRM constraint `~> 4.0` permits 4.x releases, while `.terraform.lock.hcl` selects the exact provider version and records checksums for the Linux and Windows platforms used by the lab.
 
-From `infra/terraform`, these commands check the configuration without deploying:
+From `infra/terraform`, these commands initialize the remote backend and check the configuration without deploying. The first command requires an Azure CLI sign-in and Blob data access:
 
 ```powershell
-terraform init
-terraform fmt -check
+az login
+terraform init -input=false -lockfile=readonly
+terraform fmt -check -recursive
 terraform validate
 ```
 
@@ -179,16 +186,17 @@ flowchart TD
 
 - Azure DevOps project: `Azure-DevOps-Delivery-Lab`
 - Azure DevOps organization: `romy33`
-- Azure Boards items: Epic #1 → Issue #2 → Task #3; Terraform Issue #5 is also linked to Epic #1
+- Azure Boards items: Epic #1 → Issue #2 → Task #3; Terraform Issue #5 and remote-state Issue #6 are also linked to Epic #1
 - Terraform work branch for Issue #5: `feature/5-terraform-app-service`
+- Remote-state work branch for Issue #6: `feature/terraform-remote-state`
 - API: .NET 10 ASP.NET Core project in `src/ServiceStatus.Api`, with a `/health` endpoint returning HTTP 200 and `{"status":"Healthy"}`
 - Tests: xUnit project in `tests/ServiceStatus.Api.Tests`
-- Pipeline: `main` runs .NET tests; post-merge run #20261117.4 passed with 100% of tests passing. Terraform formatting, initialization, and validation also passed on the current feature branch; no deployment is configured.
+- Pipeline: `main` runs .NET tests; latest post-merge run #20261117.11 succeeded. Terraform formatting, initialization, and validation also passed on the current feature branch; no deployment is configured.
 - Branch policy: `main` requires an automatic passing build for PR validation; PR #1's validation passed
 - MCP: local Azure DevOps MCP server configured in root `.mcp.json`, using Azure CLI authentication
 - Commits: the API, tests, pipeline, and learning notes are pushed on `feature/2-service-status-api`
-- Pull requests: #1 (API and tests) and #2 (main-pipeline notes) were merged
-- Terraform: configuration validated; the East US plan previewed 3 additions and no changes or deletions; no Azure resources have been created
-- Not done yet: configure remote state or deploy the API
+- Pull requests: #1 (API and tests), #2 (main-pipeline notes), and #3 (Terraform App Service configuration) were merged
+- Terraform: remote backend is configured locally; the current plan previews 2 App Service additions and no changes or deletions. The separate remote-state storage account and private `tfstate` container are provisioned, as is `rg-service-status-lab`; no App Service resources have been created.
+- Not done yet: configure Azure DevOps pipeline identity/access to the remote backend, add a reviewed pipeline plan, and deploy the API only after cost review and explicit approval
 
 Check `git status` before making more changes or switching branches.
