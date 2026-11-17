@@ -2,7 +2,7 @@
 
 This configuration describes an Azure resource group, a Linux App Service plan, and a Linux Web App for the API. It does not deploy anything until `terraform apply` is run.
 
-The plan uses the Free (`F1`) App Service tier to keep the lab cost-conscious. It has significant limitations and availability can vary by region and subscription. Review the current Azure pricing and the plan shown by Terraform before creating resources.
+The plan uses the Free (`F1`) App Service tier to keep the lab cost-conscious. It has significant limitations and availability can vary by region and subscription. Always On is disabled because it isn't supported by this tier, and FTP/WebDeploy basic publishing authentication is disabled. Review the current Azure pricing and the plan shown by Terraform before creating resources.
 
 ## Inputs
 

@@ -130,7 +130,9 @@ Both are installed developer toolchains, but they solve different problems: .NET
 
 The configuration in `infra/terraform` describes three Azure resources: a resource group, a Linux App Service plan, and a Linux Web App for the API. The Web App is configured to use .NET 10 and HTTPS. Its name must be globally unique in Azure.
 
-The initial plan uses the `F1` Free App Service tier to keep the lab cost-conscious. Free-tier availability and limits vary; it is for learning, not production. Review current Azure pricing and the plan before creating any resources. No resources have been deployed. The pipeline only runs Terraform formatting, initialization, and validation; it does not run `plan` or `apply`.
+The initial plan uses the `F1` Free App Service tier to keep the lab cost-conscious. Free-tier availability and limits vary; it is for learning, not production. Always On is disabled because F1 doesn't support it, and FTP/WebDeploy basic publishing authentication is disabled. Review current Azure pricing and the plan before creating any resources.
+
+An authenticated plan in East US proposed 3 resources to add, 0 to change, and 0 to destroy. This is a preview, not a cost estimate or a guarantee that Azure has capacity to create the resources. No resources have been deployed. The pipeline only runs Terraform formatting, initialization, and validation; it does not run `plan` or `apply`.
 
 `terraform init` downloads the AzureRM provider and creates `.terraform.lock.hcl`, which should be committed to keep provider selection consistent. The generated `.terraform` directory and local state are ignored by Git. Local `terraform.tfvars` files are also ignored; they hold input values such as subscription ID, region, and globally unique app name, not credentials. The configuration does not yet have a remote state backend, which should be added before team-based Terraform runs.
 
@@ -181,12 +183,12 @@ flowchart TD
 - Terraform work branch for Issue #5: `feature/5-terraform-app-service`
 - API: .NET 10 ASP.NET Core project in `src/ServiceStatus.Api`, with a `/health` endpoint returning HTTP 200 and `{"status":"Healthy"}`
 - Tests: xUnit project in `tests/ServiceStatus.Api.Tests`
-- Pipeline: `main` runs .NET tests; post-merge run #20261117.4 passed with 100% of tests passing. The current branch adds Terraform formatting and validation checks, not deployment.
+- Pipeline: `main` runs .NET tests; post-merge run #20261117.4 passed with 100% of tests passing. Terraform formatting, initialization, and validation also passed on the current feature branch; no deployment is configured.
 - Branch policy: `main` requires an automatic passing build for PR validation; PR #1's validation passed
 - MCP: local Azure DevOps MCP server configured in root `.mcp.json`, using Azure CLI authentication
 - Commits: the API, tests, pipeline, and learning notes are pushed on `feature/2-service-status-api`
 - Pull requests: #1 (API and tests) and #2 (main-pipeline notes) were merged
-- Terraform: local formatting and validation passed; no Azure resources have been created
-- Not done yet: run Terraform plan with Azure authentication, configure remote state, or deploy the API
+- Terraform: configuration validated; the East US plan previewed 3 additions and no changes or deletions; no Azure resources have been created
+- Not done yet: configure remote state or deploy the API
 
 Check `git status` before making more changes or switching branches.
