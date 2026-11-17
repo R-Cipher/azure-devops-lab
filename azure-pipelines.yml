@@ -7,6 +7,9 @@ trigger:
 pool:
   vmImage: ubuntu-latest
 
+variables:
+  terraformWebAppName: service-status-lab-romy01
+
 steps:
   - task: UseDotNet@2
     displayName: Use .NET 10 SDK
@@ -42,3 +45,21 @@ steps:
       "$download_dir/terraform" validate
     displayName: Validate Terraform configuration
     workingDirectory: infra/terraform
+  - task: AzureCLI@2
+    displayName: Plan Terraform infrastructure
+    inputs:
+      azureSubscription: sc-terraform-plan
+      scriptType: bash
+      scriptLocation: inlineScript
+      workingDirectory: infra/terraform
+
+      inlineScript: |
+        set -euo pipefail
+
+        terraform_bin="${AGENT_TEMPDIRECTORY}/terraform/terraform"
+        subscription_id="$(az account show --query id --output tsv)"
+
+        "$terraform_bin" init -reconfigure -input=false -lockfile=readonly
+        "$terraform_bin" plan -input=false -no-color \
+          -var="subscription_id=${subscription_id}" \
+          -var="web_app_name=${{ variables.terraformWebAppName }}"
