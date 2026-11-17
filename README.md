@@ -1,20 +1,19 @@
-# Introduction 
-TODO: Give a short introduction of your project. Let this section explain the objectives or the motivation behind this project. 
+# Azure DevOps Delivery Lab
 
-# Getting Started
-TODO: Guide users through getting your code up and running on their own system. In this section you can talk about:
-1.	Installation process
-2.	Software dependencies
-3.	Latest releases
-4.	API references
+A small portfolio lab for learning Azure Boards, Git, automated testing, Azure Pipelines, Terraform, and Azure deployment through a Service Status API.
 
-# Build and Test
-TODO: Describe and show how to build your code and run the tests. 
+## Learning notes
 
-# Contribute
-TODO: Explain how other users and developers can contribute to make your code better. 
+Start with [Learning Notes](docs/learning-notes.md) for plain-language explanations of MCP, Azure Boards work-item hierarchy, and this lab's current setup.
 
-If you want to learn more about creating good readme files then refer the following [guidelines](https://docs.microsoft.com/en-us/azure/devops/repos/git/create-a-readme?view=azure-devops). You can also seek inspiration from the below readme files:
-- [ASP.NET Core](https://github.com/aspnet/Home)
-- [Visual Studio Code](https://github.com/Microsoft/vscode)
-- [Chakra Core](https://github.com/Microsoft/ChakraCore)
+## Application
+
+The ASP.NET Core API is in `src/ServiceStatus.Api`. Its `/health` endpoint returns a healthy status.
+
+Build it with the .NET 10 SDK:
+
+```powershell
+dotnet build .\src\ServiceStatus.Api\ServiceStatus.Api.csproj
+```
+
+Automated tests are in `tests/ServiceStatus.Api.Tests`; the pipeline recipe is in `azure-pipelines.yml`. The pipeline is configured and has passed a run. Terraform infrastructure is a later lab step.
