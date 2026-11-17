@@ -9,6 +9,7 @@ pool:
 
 variables:
   terraformWebAppName: service-status-lab-romy01
+  terraformResourceGroupName: rg-service-status-lab
 
 stages:
   - stage: ValidateAndPlan
@@ -97,3 +98,72 @@ stages:
 
                       "$terraform_bin" init -reconfigure -input=false -lockfile=readonly
                       "$terraform_bin" apply -input=false -no-color "${PIPELINE_WORKSPACE}/terraform-plan/tfplan"
+
+  - stage: PackageApplication
+    displayName: Package application
+    dependsOn: ValidateAndPlan
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - job: package_application
+        displayName: Publish ASP.NET application artifact
+        steps:
+          - task: UseDotNet@2
+            displayName: Use .NET 10 SDK
+            inputs:
+              packageType: sdk
+              version: 10.0.x
+
+          - task: DotNetCoreCLI@2
+            displayName: Publish ASP.NET application
+            inputs:
+              command: publish
+              projects: src/ServiceStatus.Api/ServiceStatus.Api.csproj
+              arguments: --configuration Release --output $(Build.ArtifactStagingDirectory)/publish
+              publishWebProjects: false
+              zipAfterPublish: false
+
+          - task: ArchiveFiles@2
+            displayName: Archive published application
+            inputs:
+              rootFolderOrFile: $(Build.ArtifactStagingDirectory)/publish
+              includeRootFolder: false
+              archiveType: zip
+              archiveFile: $(Build.ArtifactStagingDirectory)/service-status-api.zip
+              replaceExistingArchive: true
+
+          - publish: $(Build.ArtifactStagingDirectory)/service-status-api.zip
+            artifact: app-package
+            displayName: Publish application package
+
+  - stage: DeployApplication
+    displayName: Deploy application after approval
+    dependsOn:
+      - Apply
+      - PackageApplication
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: application_deploy
+        displayName: Deploy approved ASP.NET application
+        environment: app-deploy
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: app-package
+
+                - task: AzureCLI@2
+                  displayName: Deploy application package to Web App
+                  inputs:
+                    azureSubscription: sc-terraform-apply
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      set -euo pipefail
+
+                      az webapp deploy \
+                        --resource-group "$(terraformResourceGroupName)" \
+                        --name "$(terraformWebAppName)" \
+                        --src-path "${PIPELINE_WORKSPACE}/app-package/service-status-api.zip" \
+                        --type zip \
+                        --async false

@@ -2,7 +2,7 @@
 
 A portfolio lab demonstrating an Azure DevOps workflow around a small ASP.NET Core Service Status API. It combines Azure Boards work tracking, Git branches and pull requests, automated tests, Azure Pipelines CI, and Terraform infrastructure as code.
 
-> **Current status:** API CI and Terraform validation are implemented. A fresh plan using remote state previewed two App Service resources in East US, with no changes or deletions. The state storage and app resource groups exist; the App Service resources have not been created or deployed.
+> **Current status:** API CI, Terraform validation, infrastructure apply, and an approval-gated application deployment stage are implemented. The App Service Plan and Web App infrastructure exist. The application deployment still requires a successful `main` pipeline run, manual approval in the `app-deploy` environment, and `/health` verification.
 
 ## What this project demonstrates
 
@@ -23,11 +23,14 @@ flowchart LR
     D --> F["Terraform format, validation, and plan"]
     E --> G["Review and merge to main"]
     F --> G
-    G --> H["Manual approval"]
+    G --> H["Terraform approval"]
     H --> I["Terraform apply"]
+    I --> J["Application package"]
+    J --> K["Application approval"]
+    K --> L["Deploy Web App"]
 ```
 
-The pipeline checks the application and Terraform configuration on `main` and `feature/*`. On `main`, it creates and publishes a Terraform plan artifact. The `Apply` stage is restricted to `main` and uses the `terraform-apply` environment, where configured approvals must complete before the reviewed plan is applied. The pipeline does not deploy the API.
+The pipeline checks the application and Terraform configuration on `main` and `feature/*`. On `main`, it creates and publishes a Terraform plan artifact. The `Apply` stage is restricted to `main` and uses the `terraform-apply` environment, where configured approvals must complete before the reviewed plan is applied. After infrastructure succeeds, the pipeline publishes the ASP.NET application and deploys it through the separately approved `app-deploy` environment. Feature branches never deploy infrastructure or application code.
 
 ## Application
 
@@ -62,9 +65,9 @@ Terraform configuration is in `infra/terraform`. It uses a separately created re
 - A Linux App Service plan using the Free (`F1`) tier.
 - A Linux Web App configured for .NET 10 and HTTPS, with Always On and publishing basic authentication disabled.
 
-The resource group `rg-service-status-lab` must be created separately before planning; Terraform looks it up and uses its region. This lets the future pipeline apply identity be scoped to that group instead of the subscription. The F1 tier has significant limitations and availability can vary by region and subscription. Review current Azure pricing and the plan before provisioning resources. Remote Terraform state is configured in `infra/terraform/backend.tf` using a separate Azure Blob Storage account. Local Terraform uses Azure CLI/Microsoft Entra authentication; Azure Pipelines still uses `-backend=false` and does not have access to the backend or Azure deployment credentials.
+The resource group `rg-service-status-lab` is created separately; Terraform looks it up and uses its region. The apply identity is scoped to that resource group instead of the subscription. The F1 tier has significant limitations and availability can vary by region and subscription. Review current Azure pricing and the plan before provisioning resources. Remote Terraform state is configured in `infra/terraform/backend.tf` using a separate Azure Blob Storage account. Local Terraform uses Azure CLI/Microsoft Entra authentication. Azure Pipelines uses the plan and apply service connections for the remote backend and Azure operations.
 
-The current plan proposes two App Service resources to add, with no changes or deletions. A successful plan is not a quota or capacity guarantee and is not a cost estimate. The pipeline's plan and apply stages require separate Azure DevOps service connections named `sc-terraform-plan` and `sc-terraform-apply`.
+The approved plan created two App Service resources, with no unrelated changes or deletions. A successful plan is not a quota or capacity guarantee and is not a cost estimate. The pipeline's plan and apply stages use separate Azure DevOps service connections named `sc-terraform-plan` and `sc-terraform-apply`. The application deployment reuses `sc-terraform-apply` and does not create a new Azure credential.
 
 ### Validate Terraform without deploying
 
@@ -81,7 +84,20 @@ Pop-Location
 
 The Azure CLI identity needs Blob data access to the private state container. The AzureRM provider version is selected in `.terraform.lock.hcl`. Local `terraform.tfvars` files and any local Terraform state are ignored by Git; the active state is stored in Azure Blob Storage. Never commit credentials, secrets, or state files.
 
-`terraform plan` previews changes against Azure and requires authentication, a subscription ID, and a globally unique Web App name. The region comes from the existing resource group. `terraform apply` creates or changes the App Service resources; neither command runs in the current pipeline.
+`terraform plan` previews changes against Azure and requires authentication, a subscription ID, and a globally unique Web App name. The region comes from the existing resource group. `terraform apply` creates or changes the App Service resources. The pipeline runs these commands only on `main` after the configured infrastructure approval.
+
+## Application deployment
+
+The `PackageApplication` stage runs only on `main` after validation, publishes the ASP.NET application with `dotnet publish`, and stores the ZIP package as the `app-package` pipeline artifact. The `DeployApplication` stage depends on both a successful infrastructure `Apply` and the package stage. It uses the existing `sc-terraform-apply` service connection to run `az webapp deploy` against `rg-service-status-lab` and `service-status-lab-romy01`.
+
+Before the first application deployment, configure the separate manual gate in Azure DevOps:
+
+1. Open **Pipelines → Environments** and create an environment named `app-deploy`.
+2. Add an approval/check and designate the intended approver.
+3. Restrict the environment's pipeline permissions to this pipeline only.
+4. Confirm `sc-terraform-apply` is authorized for this pipeline; no new service connection is required.
+
+After approval, verify the Web App's **Default domain** and request `/health`. The pipeline does not configure custom domains, deployment slots, monitoring, or automatic post-deployment remediation.
 
 ## Azure DevOps pipeline
 
@@ -92,6 +108,8 @@ The pipeline definition is `azure-pipelines.yml`. It runs on pushes to `main` an
 3. Runs Terraform formatting, initialization, and validation.
 4. On `main`, runs `terraform plan` with the remote backend and publishes the plan as the `terraform-plan` artifact.
 5. On `main`, waits for approval on the `terraform-apply` environment, then applies that reviewed plan with the apply service connection.
+6. On `main`, publishes the ASP.NET application as the `app-package` artifact after validation.
+7. After infrastructure apply succeeds, waits for approval on the `app-deploy` environment, then deploys the package to the existing Web App with the apply service connection.
 
 For Azure Repos pull requests, build validation is configured separately as a branch policy on `main`.
 
@@ -109,6 +127,6 @@ See [Learning Notes](docs/learning-notes.md) for explanations of MCP, Azure Boar
 
 ## Planned next steps
 
-- Configure and verify secure Azure DevOps service connections with access to the remote state backend, and configure the `terraform-apply` environment approval.
-- Review F1 availability and pricing before deciding whether to apply the plan.
-- Add a controlled application deployment and post-deployment health check only after deployment is approved.
+- Configure and verify the `app-deploy` environment approval and pipeline permissions.
+- Run the `main` pipeline, approve application deployment, and verify `/health` returns HTTP 200.
+- Review F1 availability and pricing before future infrastructure changes.
