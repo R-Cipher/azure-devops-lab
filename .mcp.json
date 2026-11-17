@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "ado-local": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@azure-devops/mcp",
+        "romy33",
+        "--authentication",
+        "azcli",
+        "-d",
+        "core",
+        "work",
+        "work-items"
+      ],
+      "env": {
+        "ado_mcp_project": "Azure-DevOps-Delivery-Lab"
+      },
+      "tools": ["*"]
+    }
+  }
+}
