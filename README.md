@@ -88,7 +88,7 @@ The Azure CLI identity needs Blob data access to the private state container. Th
 
 ## Application deployment
 
-The `PackageApplication` stage runs only on `main` after validation, publishes the ASP.NET application with `dotnet publish`, and stores the ZIP package as the `app-package` pipeline artifact. The `DeployApplication` stage depends on both a successful infrastructure `Apply` and the package stage. It uses the existing `sc-terraform-apply` service connection to run `az webapp deploy` against `rg-service-status-lab` and `service-status-lab-romy01`.
+The `PackageApplication` stage runs only on `main` after validation, publishes the ASP.NET application with `dotnet publish`, verifies the published DLL and runtime configuration, and stores a flat ZIP package as the `app-package` pipeline artifact. The Web App expects `ServiceStatus.Api.dll` and `ServiceStatus.Api.runtimeconfig.json` at the ZIP root. The `DeployApplication` stage depends on both a successful infrastructure `Apply` and the package stage. It uses the existing `sc-terraform-apply` service connection to run `az webapp deploy` against `rg-service-status-lab` and `service-status-lab-romy01`.
 
 Before the first application deployment, configure the separate manual gate in Azure DevOps:
 

@@ -122,10 +122,28 @@ stages:
               publishWebProjects: false
               zipAfterPublish: false
 
+          - bash: |
+              set -euo pipefail
+
+              publish_root="$(Build.ArtifactStagingDirectory)/publish"
+              package_dir="$(Build.ArtifactStagingDirectory)/package"
+              runtime_config="$(find "$publish_root" -type f -name 'ServiceStatus.Api.runtimeconfig.json' -print -quit)"
+
+              test -n "$runtime_config"
+              publish_dir="$(dirname "$runtime_config")"
+
+              rm -rf "$package_dir"
+              mkdir -p "$package_dir"
+              cp -R "$publish_dir"/. "$package_dir"/
+
+              test -f "$package_dir/ServiceStatus.Api.dll"
+              test -f "$package_dir/ServiceStatus.Api.runtimeconfig.json"
+            displayName: Verify published application layout
+
           - task: ArchiveFiles@2
             displayName: Archive published application
             inputs:
-              rootFolderOrFile: $(Build.ArtifactStagingDirectory)/publish
+              rootFolderOrFile: $(Build.ArtifactStagingDirectory)/package
               includeRootFolder: false
               archiveType: zip
               archiveFile: $(Build.ArtifactStagingDirectory)/service-status-api.zip
