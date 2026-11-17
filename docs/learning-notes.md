@@ -65,6 +65,8 @@ Analogy: the Epic is “build a house,” an Issue is “build the kitchen,” a
 
 The intended path is: track work in Boards → change code on a branch → run tests → commit and push → review a PR → run an Azure Pipeline → provision/deploy with Terraform.
 
+In `git commit -m "..."`, `-m` supplies a commit-message paragraph. Repeating `-m` adds another paragraph. In this lab, the first paragraph is the summary, `AB#2 AB#3` references the Azure Boards work items, and `Co-authored-by: ...` is a Git commit trailer. A commit is local; `git push` uploads it to the Azure DevOps remote.
+
 ## Automated tests
 
 The API project is the application. The test project is a separate program that checks the application automatically. A project reference lets the test project use the API code. `Microsoft.AspNetCore.Mvc.Testing` can start the API in memory, so a test can send an HTTP request to `/health` without deploying the app to Azure.
@@ -146,6 +148,7 @@ flowchart TD
 - API: .NET 10 ASP.NET Core project in `src/ServiceStatus.Api`, with a `/health` endpoint returning HTTP 200 and `{"status":"Healthy"}`
 - Tests: xUnit project in `tests/ServiceStatus.Api.Tests`
 - MCP: local Azure DevOps MCP server configured in root `.mcp.json`, using Azure CLI authentication
-- Not done yet: commit/push/PR, Azure Pipeline, Terraform infrastructure, or Azure deployment
+- Local commit: `6c55ef6` (`Create and test Service Status API`); the branch hasn't been pushed yet
+- Not done yet: pull request, Azure Pipeline, Terraform infrastructure, or Azure deployment
 
-The API and MCP configuration currently exist as uncommitted local changes. Check `git status` before committing or switching branches.
+Check `git status` before making more changes or switching branches.
