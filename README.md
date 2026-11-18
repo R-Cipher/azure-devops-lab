@@ -1,6 +1,6 @@
 # Azure DevOps Delivery Lab
 
-A portfolio lab demonstrating an Azure DevOps workflow around a small ASP.NET Core Service Status API. It combines Azure Boards work tracking, Git branches and pull requests, automated tests, Azure Pipelines CI, and Terraform infrastructure as code. Random Text
+A portfolio lab demonstrating an Azure DevOps workflow around a small ASP.NET Core Service Status API. It combines Azure Boards work tracking, Git branches and pull requests, automated tests, Azure Pipelines CI, and Terraform infrastructure as code.
 
 > **Current status:** The lab is complete and the Azure App Service infrastructure has been torn down. This repository still contains the API, tests, Terraform configuration, and Azure Pipelines definition needed to reproduce the workflow, but no deployed Web App, live endpoint, deployment URL, resource ID, run metric, or deployment outcome is asserted here. The deployment flow described below is implemented in the repository and requires a newly provisioned environment before it can run again.
 
